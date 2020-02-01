@@ -1,0 +1,38 @@
+#########################################################################
+# Parameter file for MQMAS experiments
+#########################################################################
+# determine the selected pathways for a particular
+# cogwheel cycle
+
+# Base of cogwheel cycle
+COGN=23
+
+# winding numbers for the cogwheel cycle given
+COGwdg=3 0 22
+
+# desired coh. pathway
+# this is used for the calculation of the receiver phase
+COGpw=0 3 1 -1
+
+# this determines, which nucleus the pulses act on
+which_nucl = 1 1 1
+
+# this variable allows us to deselect certain pathways
+# In this case we are starting with zero coh. order
+# and detect -1 coh. order
+# A maximum of triple-quantum coherence is allowed
+# to allow more, add more lines, but consider that
+# zero is always in row number floor(n/2-1)+1 (if n is 
+# the number of rows)
+
+attn=0  1  1  0
+     0  1  1  0
+     0  1  1  0
+     1  1  1  0
+     0  1  1  1
+     0  1  1  0
+     0  1  1  0
+
+# threshold value
+cutoff=1e-4
+

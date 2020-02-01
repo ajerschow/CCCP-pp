@@ -1,0 +1,45 @@
+#########################################################################
+# Parameter file for MQMAS experiments
+#########################################################################
+# determine a cogwheel cycle
+
+# Determine the range and increment for cogwheel base numbers to be searched
+COGmin_N=2
+COGmax_N=23
+COGinc_N=1
+
+# Determines the number of selected pathways that we are going to 
+# tolerate for an acceptable solution
+COGmax_pw=1
+
+# winding numbers don't have a meaning, except when they are 
+# zero they indicate that the winding number for the corresponding pulse need
+# not be searched.
+COGwdg=3 1 0
+
+# desired coh. pathway
+COGpw=0 3 1 -1
+
+
+# this determines, which nucleus the pulses act on
+which_nucl = 1 1 1
+
+# this variable allows us to deselect certain pathways
+# In this case we are starting with zero coh. order
+# and detect -1 coh. order
+# Additionally we forbid even coherence orders (except zero)
+# A maximum of triple-quantum coherence is allowed
+# to allow more, add more lines, but consider that
+# zero is always in row number floor(n/2-1)+1 (if n is 
+# the number of rows)
+
+attn=0  1  1  0
+     0  0  0  0
+     0  1  1  0
+     1  1  1  0
+     0  1  1  1
+     0  0  0  0
+     0  1  1  0
+
+# threshold value
+cutoff=1e-4

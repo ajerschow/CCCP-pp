@@ -1,0 +1,356 @@
+#***********************************************************
+# careful: if the comment starts at the first char of a line
+# flex thinks it's a rule!!!!!!!
+#
+# BEWARE: initial conditions are just the variable names
+# with an appended "C": might cause problems
+#***********************************************************
+
+# COGpw is desired pw (for all nuclei)
+# COGmax_N maximum modulus
+# COGmax_pw max. number of other pw allowed for 
+#       a given N, nu_i to match
+
+@fvars=("cutoff","maxjump","maxcoh","COGmax_pw","COGmax_N","COGN","COGmin_N","COGinc_N");
+@fvars_type=(0,      1,       1,        1,         1,         1,     1,     1);
+@types=("float","int");
+@token=("FNUM","FNUM");
+@scanstr=("%g","%d");
+@fvects=("range","base","which_nucl","pulse_dur","COGwdg");
+@fvects_type=(1,    1,      1,         0,           1);
+#@fvectsmax=("MAXSITES","MAXSITES","MAXSITES","MAXSITES","NT1","NP","NP");
+@flist_vects=("ph","COGpw");
+@flist_vects_type=(1,1);
+
+@flist_mtx=("attn");
+@flist_mtx_type=(0);
+
+
+print " /******* defining initial conditions ********/\n";
+print "%x ";
+foreach my $var (@fvars){
+    print "${var}C ";
+}
+foreach my $var (@fvects){
+    print "${var}C ";
+}
+foreach my $var (@flist_vects){
+    print "${var}C ";
+}
+foreach my $var (@flist_mtx){
+    print "${var}C ";
+}
+
+
+print "fnameC\n";
+
+print "%option noyywrap\n\n";
+
+
+print " /******* other C and lex definitions *******/\n";
+print "%\{\n#define NOTASSIGNED -99999999\n#define MAXFNAME 100\n#define DEFAULTFNAME \"qsim.fid\"\n%\}\n";
+print "%\{\n#include <stdio.h>\n%\}\n";
+print "%\{\n#include <vector>\n%\}\n";
+print "%\{\n#include <list>\n%\}\n";
+print "%\{\n#include <string>\n%\}\n";
+print "%\{\nusing namespace std;\n%\}\n";
+
+print "FNUM -*[0-9]+(\".\"[0-9])*([eEdD]*[-+]*[0-9]*)*\n";
+print "INUM -*[0-9]+\n";
+print "STRING [^ \\t\\n#]+\n\n";
+
+print " /******** defining variables ********/\n";
+
+open (FOUT, "> ParsedVars.h");
+
+print FOUT "#define NOTASSIGNED -99999999\n";
+for (my $i=0;$i<=$#fvars;$i++){
+    print "     $types[$fvars_type[$i]] $fvars[$i]=NOTASSIGNED;\n";
+    print FOUT "     extern $types[$fvars_type[$i]] $fvars[$i];\n";
+}
+for (my $i=0;$i<=$#fvects;$i++){
+    print "     std::vector<$types[$fvects_type[$i]] > $fvects[$i];\n";
+    print FOUT "     extern std::vector<$types[$fvects_type[$i]] > $fvects[$i];\n";
+}
+for (my $i=0;$i<=$#flist_vects;$i++){
+    print "     std::list<std::vector<$types[$flist_vects_type[$i]]> > $flist_vects[$i];\n";
+    print FOUT "     extern std::list<std::vector<$types[$flist_vects_type[$i]]> > $flist_vects[$i];\n";
+}
+for (my $i=0;$i<=$#flist_mtx;$i++){
+    print "     std::list<std::vector<std::vector<$types[$flist_mtx_type[$i]]> > > $flist_mtx[$i];\n";
+    print FOUT "     extern std::list<std::vector<std::vector<$types[$flist_mtx_type[$i]]> > > $flist_mtx[$i];\n";
+}
+
+
+for (my $i=0;$i<=$#fvects;$i++){
+    print "     int N$fvects[$i]=NOTASSIGNED;\n";
+}
+for (my $i=0;$i<=$#flist_vects;$i++){
+    print "     int N$flist_vects[$i]=NOTASSIGNED;\n";
+}
+for (my $i=0;$i<=$#flist_mtx;$i++){
+    print "     int N$flist_mtx[$i]=NOTASSIGNED;\n";
+    print "     std::vector<std::vector<$types[$flist_mtx_type[$i]]> > dummymtx$types[$flist_mtx_type[$i]]$flist_mtx[$i];\n";
+}
+
+for (my $i=0;$i<=$#types;$i++){
+    print "     $types[$i] dummy$types[$i];\n";
+    print "     std::vector<$types[$i]> dummyvec$types[$i];\n";
+}
+close(FOUT);
+
+print "     string fname=DEFAULTFNAME;\n";
+print "     char c;\n";
+print "     int linecount=1,vectcount=0;\n\n";
+print "\n%%\n\n";
+print " /******* rules ***********/\n";
+print "[ \\t]+          /* eat whitespace */\n";
+print "\\n              linecount++;\n";
+print "\"#\".*\"\\n\"       linecount++;     /* eat comments to the end of the line */\n";
+
+print "\n\n /*********************************/\n";
+print " /*******  reading in vars ********/\n";
+print " /*********************************/\n\n";
+for (my $i=0;$i<=$#fvars;$i++){
+    my $var=$fvars[$i];
+    print " /*---- ${var} --------*/\n";
+    print "\"${var}\"[ \\t]*\"=\"[ \\t]*  \{
+#ifdef VERBOSE
+		/*printf(\"reading ${var}($types[$fvars[$i]])=\\n\");*/
+#endif
+                BEGIN(${var}C);\}\n";
+
+    print "<${var}C>\{
+  \{$token[$fvars_type[$i]]\}        \{(void) sscanf(yytext,\"$scanstr[$fvars_type[$i]]\",&${var});
+#ifdef VERBOSE
+                 printf(\"Read ${var}($types[$fvars_type[$i]])=>$scanstr[$fvars_type[$i]]<\\n\",${var});
+#endif
+                 BEGIN(INITIAL);\}
+  [.\\n]         \{printf(\"Syntax error 1 at line \%d!\\nAborting...\\n\",linecount);
+                 exit(1);\}\n\}\n";
+}
+
+
+print " /*---- fname --------*/\n";
+print "\"fname\"[ \\t]*\"=\"[ \\t]*  \{/* printf(\"reading fname(string)=\\n\"); */
+                BEGIN(fnameC);\}\n";
+
+    print "<fnameC>\{
+  \{STRING\}        \{    fname.append(yytext);
+#ifdef VERBOSE
+                 cout << \"Read fname(string)=\" << fname << endl;
+#endif
+                 BEGIN(INITIAL);\}
+  [.\\n]         \{printf(\"Syntax error 1 at line \%d!\\nAborting...\\n\",linecount);
+                 exit(1);\}\n\}\n";
+
+
+print "\n\n /*********************************/\n";
+print " /*******  reading in vectors ********/\n";
+print " /*********************************/\n\n";
+for (my $i=0;$i<=$#fvects;$i++){
+    my $var=$fvects[$i];
+    my $max=$fvectsmax[$i];
+    my $mytype=$types[$fvects_type[$i]];
+    my $myscanstr=$scanstr[$fvects_type[$i]];
+    my $mytoken=$token[$fvects_type[$i]];
+
+    print " /*---- ${var} --------*/\n";
+    print "\"${var}\"[ \\t]*\"=\"[ \\t]*  \{
+#ifdef VERBOSE
+		printf(\"reading vect: ${var}($mytype)=\");
+#endif
+                vectcount=0;
+                ${var}.clear();
+                BEGIN(${var}C);\}\n";
+    print "<${var}C>\{
+  \{$mytoken\}        \{
+                 (void) sscanf(yytext,\"$myscanstr\",&dummy$mytype);
+                 ${var}.push_back(dummy$mytype);
+#ifdef VERBOSE
+                 printf(\" >$myscanstr<\",${var}\[vectcount\]);
+#endif
+                 vectcount++;
+                 BEGIN(${var}C);\}
+  
+  [ \\t,]+     /* eat up whitespace */
+
+  [#\\n]       \{
+#ifdef VERBOSE
+		  printf(\"\\n\");
+#endif
+		  if(*yytext==\'#\') while((c=yyinput())!='\\n' && c!=EOF);
+                  linecount++;
+	          BEGIN(${var}C);
+                \}
+
+  .		\{
+                  yyless(0);
+	          N${var}=vectcount;
+                  BEGIN(INITIAL);
+                  //   printf(\"Syntax error 1 at line %d!\\nAborting...\\n\",linecount);
+                  //   exit(1);/* error in var assignment */
+		\}
+ \}\n";
+}
+
+print "\n\n /*****************************************/\n";
+print " /*******  reading in vectors of vectors ********/\n";
+print " /********************************************/\n\n";
+for (my $i=0;$i<=$#flist_vects;$i++){
+    my $var=$flist_vects[$i];
+    my $max=$fvectsmax[$i];
+    my $mytype=$types[$flist_vects_type[$i]];
+    my $myscanstr=$scanstr[$flist_vects_type[$i]];
+    my $mytoken=$token[$flist_vects_type[$i]];
+
+    print " /*---- ${var} --------*/\n";
+    print "\"${var}\"[ \\t]*\"=\"[ \\t]*  \{
+#ifdef VERBOSE
+		printf(\"reading list<vect>: ${var}($mytype)=\");
+#endif
+                vectcount=0;
+	        dummyvec$mytype.clear();
+                BEGIN(${var}C);\}\n";
+    print "<${var}C>\{
+  \{$mytoken\}        \{
+                 (void) sscanf(yytext,\"$myscanstr\",&dummy$mytype);
+                 dummyvec$mytype.push_back(dummy$mytype);	
+#ifdef VERBOSE
+                 printf(\" >$myscanstr<\",dummyvec$mytype\[vectcount\]);
+#endif
+                 vectcount++;
+                 BEGIN(${var}C);\}
+  
+  [ \\t,]+     /* eat up whitespace */
+
+  [#\\n]       \{
+#ifdef VERBOSE
+		  printf(\"\\n\");
+#endif
+		  if(*yytext==\'#\') while((c=yyinput())!='\\n' && c!=EOF);
+                  linecount++;
+	          BEGIN(${var}C);
+                \}
+
+  .		\{
+                  yyless(0);
+                  if (vectcount>N${var}) \{
+	                  N${var}=vectcount;
+                  \}
+	          ${var}.push_back(dummyvec$mytype);
+                  BEGIN(INITIAL);
+                  //   printf(\"Syntax error 1 at line %d!\\nAborting...\\n\",linecount);
+                  //   exit(1);/* error in var assignment */
+		\}
+ \}\n";
+}
+
+
+print "\n\n /*****************************************/\n";
+print " /*******  reading in lists of matrices ********/\n";
+print " /********************************************/\n\n";
+for (my $i=0;$i<=$#flist_mtx;$i++){
+    my $var=$flist_mtx[$i];
+    my $mytype=$types[$flist_mtx_type[$i]];
+    my $myscanstr=$scanstr[$flist_mtx_type[$i]];
+    my $mytoken=$token[$flist_mtx_type[$i]];
+
+    print " /*---- ${var} --------*/\n";
+    print "\"${var}\"[ \\t]*\"=\"[ \\t]*  \{
+#ifdef VERBOSE
+                printf(\"reading list<mtx>: ${var}($mytype)=\");
+#endif
+                vectcount=0;
+	        dummyvec$mytype.clear();
+                dummymtx$mytype$var.clear();
+	        N${var}=0;	
+                BEGIN(${var}C);\}\n";
+    print "<${var}C>\{
+  \{$mytoken\}        \{
+                 (void) sscanf(yytext,\"$myscanstr\",&dummy$mytype);
+                 dummyvec$mytype.push_back(dummy$mytype);
+#ifdef VERBOSE	
+                 printf(\" >$myscanstr<\",dummyvec$mytype\[vectcount\]);
+#endif
+                 vectcount++;
+                 BEGIN(${var}C);\}
+  
+  [ \\t,]+     /* eat up whitespace */
+
+     
+
+  (\"#\".*)*\"\\n\"    \{
+	        if (vectcount==0) linecount++;
+                else \{
+                  if (dummymtx$mytype$var.size()>0 && vectcount!=N${var}) \{
+	                  printf(\"Matrix $var %d contains lines of unequal length, line %d, %d %d %d!\\nAborting...\\n\",$var.size()+1,linecount,dummymtx$mytype$var.size(),vectcount, N${var});
+                          exit(1);/* error in var assignment */
+	          \}
+	          else \{
+                     N${var}=vectcount;
+                  \}
+	          dummymtx$mytype${var}.push_back(dummyvec$mytype);
+	          dummyvec$mytype.clear();
+	          vectcount=0;
+                  linecount++;
+		  BEGIN(${var}C);
+                \}
+             \}
+
+  .		\{ 
+ /*                  if(*yytext==\'#\') \{
+                        while((c=yyinput())!='\\n' && c!=EOF);
+                        linecount++;
+ 	               BEGIN(${var}C);
+                   \} else \{
+ */
+                        yyless(0);
+	                ${var}.push_back(dummymtx$mytype$var);
+#ifdef VERBOSE
+			printf(\"\\n\");
+#endif
+                        BEGIN(INITIAL);
+                       //   printf(\"Syntax error 1 at line %d!\\nAborting...\\n\",linecount);
+                       //   exit(1);/* error in var assignment */
+ /*                  \}*/
+		\}
+ \}\n";
+}
+
+
+
+print "\n\n /*********************************/\n";
+print " /*******  Other rules ************/\n";
+print " /*********************************/\n\n";
+
+print ".        \{printf(\"Syntax error 2 at line \%d!  >%s< \\nAborting...\\n\",linecount,yytext);
+         exit(1);\}\n";
+
+
+print "\n\n /*********************************/\n";
+print " /*******  EOF rules  *************/\n";
+print " /*********************************/\n\n";
+
+print " /*****  check if all vars and vects were assigned  ****/\n";
+
+#####################################################
+# DEACTIVATED FOR NOW, ADD VERIFICATION ROUTINES HERE
+#####################################################
+
+# print "<<EOF>> \{\n";
+# for (my $i=0;$i<=$#fvars;$i++){
+#    print "  if($fvars[$i]==NOTASSIGNED)\{ printf(\"$fvars[$i] was not assigned!\\nAborting...\\n\");exit(1);\}\n";
+#}
+
+# for (my $i=0;$i<=$#fvects;$i++){
+#    print "  if(N$fvects[$i]==0)\{ printf(\"$fvects[$i] was not assigned|\\nAborting...\\n\");exit(1);\}\n";
+# }
+
+# print "  if(Neta!=NomegaQ || Ncs!=NomegaQ || Nrelct!=NomegaQ) \{ printf(\"eta, cs, relct, and omegaQ have unequal length!\\nAborting...\\n\");exit(1);\}\n";
+
+# print "  if(Nt1ratio>=Np || Nt1ratio>=Ntau) \{ printf(\"t1ratio, p, and tau have incompatible lengths!\\nAborting...\\n\");exit(1);\}\n";
+
+# print "  yyterminate();\n";
+# print "\}\n";
+

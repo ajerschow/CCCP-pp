@@ -1,0 +1,48 @@
+#########################################################################
+# Parameter file for PFGBPSTE diffusion experiments
+#########################################################################
+# determine a cogwheel cycle
+#########################################################################
+
+
+# all pulses on one nuclear species
+which_nucl = 1 1 1 1 1 1
+
+# Only zero coherence order is allowed during the periods
+# when spoiler gradients are used.
+# In order to select both wanted pathways it is actually
+# easier to look at the experiment without the last pulse.
+# The phase cycle for the last pulse should not matter anyway
+# because we only detect minus one coherence.
+# 'attn' therefore specifies only zero coherence order at the end
+
+# use this one for consideration of 2QC
+#attn=0 1 1 0 1 1 0 
+#     0 1 1 0 1 1 0 
+#     1 1 1 1 1 1 1 
+#     0 1 1 0 1 1 0 
+#     0 1 1 0 1 1 0 
+
+# use the following for 1QC max
+attn=
+     0 1 1 0 1 1 0 
+     1 1 1 1 1 1 1 
+     0 1 1 0 1 1 0 
+
+cutoff=1e-4
+
+# desired pathway
+COGpw=0 1 -1 0 -1 1 0
+
+# we want to be able to detect both pathways
+# therefore we need to allow at least one more
+COGmax_pw=2
+
+COGmin_N=1
+COGmax_N=10
+COGinc_N=1
+
+# this specifies that we need not search
+# all winding numbers because of the spoiler gradients 
+COGwdg=1,1, 0, 1, 1, 0
+
