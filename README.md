@@ -1,4 +1,4 @@
-# CCCP-
+# CCCP++
 Calculation of Coherence Pathways for NMR Spectroscopy
 
 https://wp.nyu.edu/jerschow/resources/cccp-complete-calculation-of-coherence-pathways/
